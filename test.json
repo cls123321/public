@@ -1,0 +1,9 @@
+{
+    "name": "abc",
+    "age": "30",
+    "city": "Wonderland",
+    "email": "alice@example.com",
+    "is_student": "False",
+    "courses": "['Math', 'Science', 'Art']",
+    "address": "{'street': '123 Main St', 'city': 'Wonderland', 'zipcode': '12345'}"
+}
