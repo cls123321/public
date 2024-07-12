@@ -29,10 +29,10 @@ class JSONEditorApp(tk.Tk):
         self.load_button = tk.Button(self, text="选择 JSON 文件", command=self.load_json)
         self.load_button.pack(pady=5)
 
-        self.file_label = tk.Label(self, text="未选择文件")
+        self.file_label = tk.Label(self, text="未选择文件", font=("Helvetica", 14))
         self.file_label.pack(pady=5)
 
-        self.scroll_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=80, height=15, spacing3=10)
+        self.scroll_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=80, height=15, spacing3=5)
         self.scroll_area.pack(pady=5)
 
         self.save_dict_button = tk.Button(self, text="保存字典", command=self.save_dict)
