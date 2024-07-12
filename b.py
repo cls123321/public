@@ -1,74 +1,57 @@
 import sys
 import json
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QPushButton,
-                             QLabel, QLineEdit, QFileDialog, QMessageBox, QFormLayout, QScrollArea, QInputDialog)
-
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 
 # 用户定义的函数（示例）
 def user_defined_function(data):
     # 假设函数进行某种处理，这里简单返回字典的长度
     return f"字典内容: {json.dumps(data, indent=4)}"
 
-
 # 新的用户定义的函数，接受目标参数和字典
 def quote_function(target_param, data):
     # 示例函数，返回目标参数和字典的一个组合字符串
     return f"目标参数: {target_param}, 字典内容: {json.dumps(data, indent=4)}"
 
-
-class JSONEditorApp(QWidget):
+class JSONEditorApp(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("JSON 文件编辑器")
-        self.setGeometry(100, 100, 600, 400)
+        self.title("JSON 文件编辑器")
+        self.geometry("600x400")
 
         self.original_data = {}
         self.edited_data = {}
 
-        self.layout = QVBoxLayout()
+        self.create_widgets()
 
-        self.load_button = QPushButton("选择 JSON 文件")
-        self.load_button.clicked.connect(self.load_json)
-        self.layout.addWidget(self.load_button)
+    def create_widgets(self):
+        self.load_button = tk.Button(self, text="选择 JSON 文件", command=self.load_json)
+        self.load_button.pack(pady=5)
 
-        self.form_layout = QFormLayout()
+        self.scroll_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=70, height=15)
+        self.scroll_area.pack(pady=5)
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_content = QWidget()
-        self.scroll_content.setLayout(self.form_layout)
-        self.scroll_area.setWidget(self.scroll_content)
-        self.layout.addWidget(self.scroll_area)
+        self.save_dict_button = tk.Button(self, text="保存字典", command=self.save_dict)
+        self.save_dict_button.pack(pady=5)
 
-        self.save_dict_button = QPushButton("保存字典")
-        self.save_dict_button.clicked.connect(self.save_dict)
-        self.layout.addWidget(self.save_dict_button)
+        self.save_json_button = tk.Button(self, text="保存字典并保存 JSON 文件", command=self.save_json)
+        self.save_json_button.pack(pady=5)
 
-        self.save_json_button = QPushButton("保存字典并保存 JSON 文件")
-        self.save_json_button.clicked.connect(self.save_json)
-        self.layout.addWidget(self.save_json_button)
+        self.process_button = tk.Button(self, text="运行", command=self.process_data)
+        self.process_button.pack(pady=5)
 
-        self.process_button = QPushButton("运行")
-        self.process_button.clicked.connect(self.process_data)
-        self.layout.addWidget(self.process_button)
+        self.quote_button = tk.Button(self, text="Quote", command=self.quote_data)
+        self.quote_button.pack(pady=5)
 
-        self.quote_button = QPushButton("Quote")
-        self.quote_button.clicked.connect(self.quote_data)
-        self.layout.addWidget(self.quote_button)
+        self.result_label = tk.Label(self, text="", wraplength=500)
+        self.result_label.pack(pady=5)
 
-        self.result_label = QLabel("")
-        self.layout.addWidget(self.result_label)
-
-        self.save_result_button = QPushButton("保存结果为文本文件")
-        self.save_result_button.clicked.connect(self.save_result)
-        self.save_result_button.setEnabled(False)
-        self.layout.addWidget(self.save_result_button)
-
-        self.setLayout(self.layout)
+        self.save_result_button = tk.Button(self, text="保存结果为文本文件", command=self.save_result, state=tk.DISABLED)
+        self.save_result_button.pack(pady=5)
 
     def load_json(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "选择 JSON 文件", "", "JSON files (*.json)")
+        file_path = filedialog.askopenfilename(title="选择 JSON 文件", filetypes=[("JSON files", "*.json")])
         if file_path:
             try:
                 with open(file_path, 'r') as file:
@@ -76,77 +59,74 @@ class JSONEditorApp(QWidget):
                     self.edited_data = self.original_data.copy()
                 self.display_data()
             except Exception as e:
-                QMessageBox.critical(self, "错误", f"无法读取文件: {e}")
+                messagebox.showerror("错误", f"无法读取文件: {e}")
 
     def display_data(self):
-        for i in reversed(range(self.form_layout.count())):
-            self.form_layout.itemAt(i).widget().setParent(None)
-
+        self.scroll_area.delete(1.0, tk.END)
         self.entries = {}
         for key, value in self.edited_data.items():
-            label = QLabel(key)
-            entry = QLineEdit()
-            entry.setText(str(value))
-            self.form_layout.addRow(label, entry)
+            label = f"{key}: "
+            entry = tk.Entry(self.scroll_area)
+            entry.insert(0, str(value))
             self.entries[key] = entry
+            self.scroll_area.insert(tk.END, label)
+            self.scroll_area.window_create(tk.END, window=entry)
+            self.scroll_area.insert(tk.END, "\n")
 
     def save_dict(self):
         try:
             for key, entry in self.entries.items():
-                self.edited_data[key] = entry.text()
-            QMessageBox.information(self, "成功", "字典已保存")
+                self.edited_data[key] = entry.get()
+            messagebox.showinfo("成功", "字典已保存")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存字典时出错: {e}")
+            messagebox.showerror("错误", f"保存字典时出错: {e}")
 
     def save_json(self):
         try:
             for key, entry in self.entries.items():
-                self.edited_data[key] = entry.text()
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存 JSON 文件", "", "JSON files (*.json)")
+                self.edited_data[key] = entry.get()
+            file_path = filedialog.asksaveasfilename(title="保存 JSON 文件", defaultextension=".json", filetypes=[("JSON files", "*.json")])
             if file_path:
                 with open(file_path, 'w') as file:
                     json.dump(self.edited_data, file, indent=4)
-                QMessageBox.information(self, "成功", "字典和 JSON 文件已保存")
+                messagebox.showinfo("成功", "字典和 JSON 文件已保存")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存字典或 JSON 文件时出错: {e}")
+            messagebox.showerror("错误", f"保存字典或 JSON 文件时出错: {e}")
 
     def process_data(self):
         try:
             for key, entry in self.entries.items():
-                self.edited_data[key] = entry.text()
+                self.edited_data[key] = entry.get()
             result = user_defined_function(self.edited_data)
-            self.result_label.setText(result)
+            self.result_label.config(text=result)
             self.result = result
-            self.save_result_button.setEnabled(True)
+            self.save_result_button.config(state=tk.NORMAL)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"处理数据时出错: {e}")
+            messagebox.showerror("错误", f"处理数据时出错: {e}")
 
     def quote_data(self):
         try:
-            target_param, ok = QInputDialog.getText(self, "输入目标参数", "目标参数:")
-            if ok and target_param:
+            target_param = simpledialog.askstring("输入目标参数", "目标参数:")
+            if target_param:
                 for key, entry in self.entries.items():
-                    self.edited_data[key] = entry.text()
+                    self.edited_data[key] = entry.get()
                 result = quote_function(target_param, self.edited_data)
-                self.result_label.setText(result)
+                self.result_label.config(text=result)
                 self.result = result
-                self.save_result_button.setEnabled(True)
+                self.save_result_button.config(state=tk.NORMAL)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"处理数据时出错: {e}")
+            messagebox.showerror("错误", f"处理数据时出错: {e}")
 
     def save_result(self):
         try:
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存文本文件", "", "Text files (*.txt)")
+            file_path = filedialog.asksaveasfilename(title="保存文本文件", defaultextension=".txt", filetypes=[("Text files", "*.txt")])
             if file_path:
                 with open(file_path, 'w') as file:
                     file.write(self.result)
-                QMessageBox.information(self, "成功", "结果已保存为文本文件")
+                messagebox.showinfo("成功", "结果已保存为文本文件")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存结果时出错: {e}")
-
+            messagebox.showerror("错误", f"保存结果时出错: {e}")
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = JSONEditorApp()
-    window.show()
-    sys.exit(app.exec_())
+    app = JSONEditorApp()
+    app.mainloop()
