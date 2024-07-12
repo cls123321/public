@@ -95,36 +95,58 @@ class JSONEditorApp(tk.Tk):
         for key, value in self.edited_data.items():
             label = tk.Label(self.scroll_area, text=f"{key}: ")
             entry = tk.Entry(self.scroll_area, bg="lightyellow", relief="solid", bd=2, width=50, font=('Helvetica', 12))
-            entry.insert(0, str(value))
-            self.entries[key] = entry
+            # 将值转换为字符串，但不使用 json.dumps，以避免双重编码
+            entry.insert(0, str(value) if not isinstance(value, (dict, list)) else json.dumps(value, ensure_ascii=False))
+            self.entries[key] = (entry, type(value))
             self.scroll_area.window_create(tk.END, window=label)
             self.scroll_area.window_create(tk.END, window=entry)
-            self.scroll_area.insert(tk.END, "\n\n")
 
     def save_dict(self):
         try:
-            for key, entry in self.entries.items():
-                self.edited_data[key] = entry.get()
+            for key, (entry, value_type) in self.entries.items():
+                value = entry.get()
+                if value_type == int:
+                    try:
+                        self.edited_data[key] = int(value)
+                    except ValueError:
+                        messagebox.showerror("错误", f"键 {key} 的值必须是整数")
+                        return
+                elif value_type == float:
+                    try:
+                        self.edited_data[key] = float(value)
+                    except ValueError:
+                        messagebox.showerror("错误", f"键 {key} 的值必须是浮点数")
+                        return
+                elif value_type == list or value_type == dict:
+                    try:
+                        self.edited_data[key] = json.loads(value)
+                    except json.JSONDecodeError:
+                        messagebox.showerror("错误", f"键 {key} 的值必须是有效的 JSON")
+                        return
+                elif value_type == bool:
+                    self.edited_data[key] = value.lower() == 'true'
+                elif value_type == type(None):
+                    self.edited_data[key] = None
+                else:
+                    self.edited_data[key] = value
             messagebox.showinfo("成功", "字典已保存")
         except Exception as e:
             messagebox.showerror("错误", f"保存字典时出错: {e}")
 
     def save_json(self):
         try:
-            for key, entry in self.entries.items():
-                self.edited_data[key] = entry.get()
+            self.save_dict()
             file_path = filedialog.asksaveasfilename(title="保存 JSON 文件", defaultextension=".json", filetypes=[("JSON files", "*.json")])
             if file_path:
                 with open(file_path, 'w') as file:
-                    json.dump(self.edited_data, file, indent=4)
+                    json.dump(self.edited_data, file, indent=4, ensure_ascii=False)
                 messagebox.showinfo("成功", "字典和 JSON 文件已保存")
         except Exception as e:
             messagebox.showerror("错误", f"保存字典或 JSON 文件时出错: {e}")
 
     def process_data(self):
         try:
-            for key, entry in self.entries.items():
-                self.edited_data[key] = entry.get()
+            self.save_dict()
             result = user_defined_function(self.edited_data)
             self.display_result(result)
             self.result = result
@@ -138,8 +160,7 @@ class JSONEditorApp(tk.Tk):
             if param1:
                 param2 = simpledialog.askfloat("输入第二个目标参数", "目标参数2 (浮点数):")
                 if param2 is not None:
-                    for key, entry in self.entries.items():
-                        self.edited_data[key] = entry.get()
+                    self.save_dict()
                     result = quote_function(param1, param2, self.edited_data)
                     self.display_result(result)
                     self.result = result
