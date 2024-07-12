@@ -1,70 +1,81 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import sys
 import json
-
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 
 # 用户定义的函数（示例）
 def user_defined_function(data):
     # 假设函数进行某种处理，这里简单返回字典的长度
     return f"字典内容: {json.dumps(data, indent=4)}"
 
+# 新的用户定义的函数，接受目标参数和字典
+def quote_function(target_param, data):
+    # 示例函数，返回目标参数和字典的一个组合字符串
+    return f"目标参数: {target_param}, 字典内容: {json.dumps(data, indent=4)}"
 
-class JSONEditorApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("JSON 文件编辑器")
+class JSONEditorApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("JSON 文件编辑器")
+        self.geometry("700x600")
 
         self.original_data = {}
         self.edited_data = {}
 
-        self.load_button = tk.Button(root, text="选择 JSON 文件", command=self.load_json)
-        self.load_button.pack(pady=10)
+        self.create_widgets()
 
-        self.frame = tk.Frame(root, background="white")
-        self.frame.pack(pady=10)
+    def create_widgets(self):
+        self.load_button = tk.Button(self, text="选择 JSON 文件", command=self.load_json)
+        self.load_button.pack(pady=5)
 
-        self.save_dict_button = tk.Button(root, text="保存字典", command=self.save_dict)
-        self.save_dict_button.pack(pady=10)
+        self.file_label = tk.Label(self, text="未选择文件")
+        self.file_label.pack(pady=5)
 
-        self.save_json_button = tk.Button(root, text="保存字典并保存 JSON 文件", command=self.save_json)
-        self.save_json_button.pack(pady=10)
+        self.scroll_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=80, height=15, spacing3=10)
+        self.scroll_area.pack(pady=5)
 
-        self.process_button = tk.Button(root, text="运行", command=self.process_data)
-        self.process_button.pack(pady=10)
+        self.save_dict_button = tk.Button(self, text="保存字典", command=self.save_dict)
+        self.save_dict_button.pack(pady=5)
 
-        self.result_label = tk.Label(root, text="")
-        self.result_label.pack(pady=10)
+        self.save_json_button = tk.Button(self, text="保存字典并保存 JSON 文件", command=self.save_json)
+        self.save_json_button.pack(pady=5)
 
-        self.save_result_button = tk.Button(root, text="保存结果为文本文件", command=self.save_result)
-        self.save_result_button.pack(pady=10)
-        self.save_result_button.config(state=tk.DISABLED)
+        self.process_button = tk.Button(self, text="运行", command=self.process_data)
+        self.process_button.pack(pady=5)
+
+        self.quote_button = tk.Button(self, text="Quote", command=self.quote_data)
+        self.quote_button.pack(pady=5)
+
+        self.result_label = tk.Label(self, text="", wraplength=600)
+        self.result_label.pack(pady=5)
+
+        self.save_result_button = tk.Button(self, text="保存结果为文本文件", command=self.save_result, state=tk.DISABLED)
+        self.save_result_button.pack(pady=5)
 
     def load_json(self):
-        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        file_path = filedialog.askopenfilename(title="选择 JSON 文件", filetypes=[("JSON files", "*.json")])
         if file_path:
             try:
                 with open(file_path, 'r') as file:
                     self.original_data = json.load(file)
                     self.edited_data = self.original_data.copy()
+                self.file_label.config(text=f"文件: {file_path}")
                 self.display_data()
             except Exception as e:
                 messagebox.showerror("错误", f"无法读取文件: {e}")
 
     def display_data(self):
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-
+        self.scroll_area.delete(1.0, tk.END)
         self.entries = {}
-        row = 0
         for key, value in self.edited_data.items():
-            label = tk.Label(self.frame, text=key, background="white")
-            label.grid(row=row, column=0, padx=5, pady=5)
-
-            entry = tk.Entry(self.frame, background="lightgray")
-            entry.grid(row=row, column=1, padx=5, pady=5)
+            label = f"{key}: "
+            entry = tk.Entry(self.scroll_area)
             entry.insert(0, str(value))
             self.entries[key] = entry
-            row += 1
+            self.scroll_area.insert(tk.END, label)
+            self.scroll_area.window_create(tk.END, window=entry)
+            self.scroll_area.insert(tk.END, "\n\n")
 
     def save_dict(self):
         try:
@@ -78,7 +89,7 @@ class JSONEditorApp:
         try:
             for key, entry in self.entries.items():
                 self.edited_data[key] = entry.get()
-            file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+            file_path = filedialog.asksaveasfilename(title="保存 JSON 文件", defaultextension=".json", filetypes=[("JSON files", "*.json")])
             if file_path:
                 with open(file_path, 'w') as file:
                     json.dump(self.edited_data, file, indent=4)
@@ -97,9 +108,22 @@ class JSONEditorApp:
         except Exception as e:
             messagebox.showerror("错误", f"处理数据时出错: {e}")
 
+    def quote_data(self):
+        try:
+            target_param = simpledialog.askstring("输入目标参数", "目标参数:")
+            if target_param:
+                for key, entry in self.entries.items():
+                    self.edited_data[key] = entry.get()
+                result = quote_function(target_param, self.edited_data)
+                self.result_label.config(text=result)
+                self.result = result
+                self.save_result_button.config(state=tk.NORMAL)
+        except Exception as e:
+            messagebox.showerror("错误", f"处理数据时出错: {e}")
+
     def save_result(self):
         try:
-            file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+            file_path = filedialog.asksaveasfilename(title="保存文本文件", defaultextension=".txt", filetypes=[("Text files", "*.txt")])
             if file_path:
                 with open(file_path, 'w') as file:
                     file.write(self.result)
@@ -107,8 +131,6 @@ class JSONEditorApp:
         except Exception as e:
             messagebox.showerror("错误", f"保存结果时出错: {e}")
 
-
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = JSONEditorApp(root)
-    root.mainloop()
+    app = JSONEditorApp()
+    app.mainloop()
