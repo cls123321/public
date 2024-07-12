@@ -5,13 +5,13 @@ from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 
 # 用户定义的函数（示例）
 def user_defined_function(data):
-    # 假设函数进行某种处理，这里简单返回字典的长度
-    return f"字典内容: {json.dumps(data, indent=4)}"
+    # 假设函数进行某种处理，这里简单返回一个新的字典
+    return {"处理后的键1": "处理后的值1", "处理后的键2": "处理后的值2"}
 
 # 新的用户定义的函数，接受目标参数和字典
 def quote_function(target_param, data):
-    # 示例函数，返回目标参数和字典的一个组合字符串
-    return f"目标参数: {target_param}, 字典内容: {json.dumps(data, indent=4)}"
+    # 示例函数，返回目标参数和字典的一个组合字典
+    return {f"目标参数_{target_param}": data}
 
 class JSONEditorApp(tk.Tk):
     def __init__(self):
@@ -26,31 +26,55 @@ class JSONEditorApp(tk.Tk):
         self.create_widgets()
 
     def create_widgets(self):
-        self.load_button = tk.Button(self, text="选择 JSON 文件", command=self.load_json)
+        self.canvas = tk.Canvas(self)
+        self.scroll_y = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scroll_x = tk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
+
+        self.scrollable_frame = tk.Frame(self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scroll_y.set, xscrollcommand=self.scroll_x.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scroll_y.pack(side="right", fill="y")
+        self.scroll_x.pack(side="bottom", fill="x")
+
+        self.load_button = tk.Button(self.scrollable_frame, text="选择 JSON 文件", command=self.load_json)
         self.load_button.pack(pady=5)
 
-        self.file_label = tk.Label(self, text="未选择文件", font=("Helvetica", 14))
+        self.file_label = tk.Label(self.scrollable_frame, text="未选择文件", font=("Helvetica", 14))
         self.file_label.pack(pady=5)
 
-        self.scroll_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=80, height=15, spacing3=5)
+        self.scroll_area = scrolledtext.ScrolledText(self.scrollable_frame, wrap=tk.WORD, width=80, height=15, spacing3=5)
         self.scroll_area.pack(pady=5)
 
-        self.save_dict_button = tk.Button(self, text="保存字典", command=self.save_dict)
-        self.save_dict_button.pack(pady=5)
+        self.button_frame = tk.Frame(self.scrollable_frame)
+        self.button_frame.pack(pady=5)
 
-        self.save_json_button = tk.Button(self, text="保存字典并保存 JSON 文件", command=self.save_json)
-        self.save_json_button.pack(pady=5)
+        self.save_dict_button = tk.Button(self.button_frame, text="保存字典", command=self.save_dict)
+        self.save_dict_button.pack(side=tk.LEFT, padx=5)
 
-        self.process_button = tk.Button(self, text="运行", command=self.process_data)
+        self.save_json_button = tk.Button(self.button_frame, text="保存字典并保存 JSON 文件", command=self.save_json)
+        self.save_json_button.pack(side=tk.LEFT, padx=5)
+
+        self.process_button = tk.Button(self.scrollable_frame, text="运行", command=self.process_data)
         self.process_button.pack(pady=5)
 
-        self.quote_button = tk.Button(self, text="Quote", command=self.quote_data)
+        self.quote_button = tk.Button(self.scrollable_frame, text="Quote", command=self.quote_data)
         self.quote_button.pack(pady=5)
 
-        self.result_label = tk.Label(self, text="", wraplength=600)
-        self.result_label.pack(pady=5)
+        self.result_area = scrolledtext.ScrolledText(self.scrollable_frame, wrap=tk.WORD, width=80, height=10, spacing3=5, font=("Helvetica", 14))
+        self.result_area.pack(pady=5)
+        self.result_area.config(state=tk.DISABLED)
 
-        self.save_result_button = tk.Button(self, text="保存结果为文本文件", command=self.save_result, state=tk.DISABLED)
+        self.save_result_button = tk.Button(self.scrollable_frame, text="保存结果为文本文件", command=self.save_result, state=tk.DISABLED)
         self.save_result_button.pack(pady=5)
 
     def load_json(self):
@@ -70,7 +94,7 @@ class JSONEditorApp(tk.Tk):
         self.entries = {}
         for key, value in self.edited_data.items():
             label = tk.Label(self.scroll_area, text=f"{key}: ")
-            entry = tk.Entry(self.scroll_area, bg="lightyellow", relief="solid", bd=2)
+            entry = tk.Entry(self.scroll_area, bg="lightyellow", relief="solid", bd=2, width=50, font=('Helvetica', 12))
             entry.insert(0, str(value))
             self.entries[key] = entry
             self.scroll_area.window_create(tk.END, window=label)
@@ -102,7 +126,7 @@ class JSONEditorApp(tk.Tk):
             for key, entry in self.entries.items():
                 self.edited_data[key] = entry.get()
             result = user_defined_function(self.edited_data)
-            self.result_label.config(text=result)
+            self.display_result(result)
             self.result = result
             self.save_result_button.config(state=tk.NORMAL)
         except Exception as e:
@@ -115,18 +139,24 @@ class JSONEditorApp(tk.Tk):
                 for key, entry in self.entries.items():
                     self.edited_data[key] = entry.get()
                 result = quote_function(target_param, self.edited_data)
-                self.result_label.config(text=result)
+                self.display_result(result)
                 self.result = result
                 self.save_result_button.config(state=tk.NORMAL)
         except Exception as e:
             messagebox.showerror("错误", f"处理数据时出错: {e}")
+
+    def display_result(self, result):
+        self.result_area.config(state=tk.NORMAL)
+        self.result_area.delete(1.0, tk.END)
+        self.result_area.insert(tk.END, json.dumps(result, indent=4, ensure_ascii=False))
+        self.result_area.config(state=tk.DISABLED)
 
     def save_result(self):
         try:
             file_path = filedialog.asksaveasfilename(title="保存文本文件", defaultextension=".txt", filetypes=[("Text files", "*.txt")])
             if file_path:
                 with open(file_path, 'w') as file:
-                    file.write(self.result)
+                    file.write(json.dumps(self.result, indent=4, ensure_ascii=False))
                 messagebox.showinfo("成功", "结果已保存为文本文件")
         except Exception as e:
             messagebox.showerror("错误", f"保存结果时出错: {e}")
