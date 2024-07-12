@@ -69,11 +69,11 @@ class JSONEditorApp(tk.Tk):
         self.scroll_area.delete(1.0, tk.END)
         self.entries = {}
         for key, value in self.edited_data.items():
-            label = f"{key}: "
-            entry = tk.Entry(self.scroll_area)
+            label = tk.Label(self.scroll_area, text=f"{key}: ")
+            entry = tk.Entry(self.scroll_area, bg="lightyellow", relief="solid", bd=2)
             entry.insert(0, str(value))
             self.entries[key] = entry
-            self.scroll_area.insert(tk.END, label)
+            self.scroll_area.window_create(tk.END, window=label)
             self.scroll_area.window_create(tk.END, window=entry)
             self.scroll_area.insert(tk.END, "\n\n")
 
